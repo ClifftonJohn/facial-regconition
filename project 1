@@ -1,0 +1,88 @@
+print("Hello AI")
+#cv2 and numpy is for a live camera 
+from keras.models import load_model
+from PIL import Image, ImageOps
+import numpy as np
+import cv2
+import sys
+print("OK")
+# Load the model
+model = load_model('keras_model.h5')
+
+# Create the array of the right shape to feed into the keras model
+# The 'length' or number of images you can put into the array is
+# determined by the first position in the shape tuple, in this case 1.
+data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
+# Replace this with the path to your image
+image = Image.open('test.jpeg')
+#resize the image to a 224x224 with the same strategy as in TM2:
+#resizing the image to be at least 224x224 and then cropping from the center
+size = (224, 224)
+image = ImageOps.fit(image, size, Image.ANTIALIAS)
+
+#turn the image into a numpy array
+image_array = np.asarray(image)
+# Normalize the image
+normalized_image_array = (image_array.astype(np.float32) / 127.0) - 1
+# Load the image into the array
+data[0] = normalized_image_array
+
+# run the inference
+prediction = model.predict(data)
+output = prediction[0]
+print(output)
+
+#get the 1D array
+output = prediction[0]
+#assign default value for max confidence
+max_index = 0
+max_confidence = output[0]
+#find the maximum confidence and its index
+for i in range(1, len(output)):
+    if max_confidence < output[i]:
+        max_confidence = output[i]
+        max_index = i
+print(max_index, max_confidence)
+
+#We use open_cv to add livecamera
+#1Get the webcam live feed
+#Set up camera
+cap= cv2.VideoCapture(0)
+#while loop
+while True:
+    #Capture frame-by-frame
+    ret, frame = cap.read()
+    #show the captured image
+    cv2.imshow('WebCam',frame)
+    #wait for the key and come out of the loop
+    if cv2.waitKey(1) == ord('q'):
+        break
+#Read the image and store it in the variable to access it by cv2.imread
+#Resize the image
+logo = cv2.image('image.png')
+size = 100
+logo = cv2.resize(logo,(size,size))
+#Create a mask in the live feed
+#"cv2.cvtColor" to first convert the given image into grayscale image
+#"cv2.THRESH_BINARY" to create a space for the image to appear 
+#Create a mask of logo
+img2gray = cv2.cvtColor(logo, cv2.COLOR_BAYER_BG2BGR)
+ret, mask = cv2.threshold(img2gray, 1, 255, cv2.THRESH_BINARY)
+#Now we are going to find ROI- range of interest
+#It is the place where image should be placed and mask out the area 
+#Inserting the image into the live feed
+#Region of Interest, where we want
+#Inserting the logo
+roi= frame[-size-10:-10, -size-10:-10]
+#Set an index of where the mask is
+roi[np.where(mask)]= 0
+roi += logo
+#Showing the video
+#"cv2.release()" to release the webcam for other sources
+# "cv2.destroyALLWindow()" after we broke out of the loop
+cv2.imshow('Webcam', frame)
+#When everything is done, release the capture
+cap.release()
+cv2.destroyAllWindows()
+
+
